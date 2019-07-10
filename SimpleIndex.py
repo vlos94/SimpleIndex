@@ -21,7 +21,7 @@ class SimpleIndex:
         terms = document.split()
         for term, position in zip(terms, range(len(terms))):
             processed_term = term.strip('\n\t ,.?!').lower()
-            self.index[term].append(position)
+            self.index[processed_term].append(position)
             
             self.document_length += 1
 
