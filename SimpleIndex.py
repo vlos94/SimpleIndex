@@ -3,13 +3,34 @@ import bisect
 from collections import defaultdict
 
 class IndexError(Exception):
-    def __init__(self, msg):
-        super(IndexError, self).__init__(msg)
+    def __init__(self, error_msg):
+        super(IndexError, self).__init__(error_msg)
 
 class SimpleIndex:
     def __init__(self, document):
-        """For now just assume the document is a string.
-           TODO: make it so that the document is a file"""
+        """  
+
+           Note: -float('inf') and float('inf')
+                will represent the beginning and 
+                end of the file, respectively.
+        
+           the document should be a file-like object
+           
+           Typically just an open file object but for 
+           testing purposes, it might be desirable 
+           to wrap a short test string
+           in a StringIO object.
+           
+           
+           The SimpleIndex object will not close the file
+           object. A good usage that takes care
+           of this would maybe would look like
+           
+           with open(<file_name>) as document:
+               index = SimpleIndex(document) 
+               
+          TODO: Do something about encodings so
+          the input could be ascii, unicode, etc"""
         
         self.index = defaultdict(list)
         self.document_length = 0
@@ -17,21 +38,26 @@ class SimpleIndex:
 
     def _process(self, document):
         """Build the index from the given document."""
-
-        terms = document.split()
-        for term, position in zip(terms, range(len(terms))):
-            processed_term = term.strip('\n\t ,.?!').lower()
-            self.index[processed_term].append(position)
+        current_position = 0
+        for line in document:
+            terms = line.strip('\n\t ,.?!').split()
+            position_range = range(current_position,
+                                   current_position+len(terms))
             
-            self.document_length += 1
+            for term, position in zip(terms, position_range):
+                processed_term = term.lower()
+                self.index[processed_term].append(position)
+            
+            current_position += len(terms)
+                
+        self.document_length = current_position+1
 
     def find_first(self, term):
         """Give position of the first occurrence of term."""
        
         term = term.lower()
         if term not in self.index:
-            error_msg = 'term {} not found in document'.format(term)
-            raise IndexError(error_msg)
+            return float('inf')
         
         return self.index[term][0]
         
@@ -41,24 +67,29 @@ class SimpleIndex:
 
         term = term.lower()
         if term not in self.index:
-            error_msg = 'term {} not found in document'.format(term)
-            raise IndexError(error_msg)
+            return float('inf')
        
         return self.index[term][-1]
 
 
     def find_next(self, term, position):
         """Find the next occurrence of the term after the given position"""
-       
+        
+        if position == -float('inf'):
+            return self.find_first(term)
+        
+        elif position == float('inf'):
+            return float('inf')
+        
+        
         term = term.lower()
         if term not in self.index:
-            error_msg = 'term {} not found in document'.format(term)
-            raise IndexError(error_msg)
+            return float('inf')
        
         positions = self.index[term]
         ##the list of positions is sorted, so we can
         ##use a binary search
-        next_position = bisect.bisect_right(positions, position)
+        next_position_index = bisect.bisect_right(positions, position)
        
         ##Handle the case of no next occurrence
         if next_position_index == len(positions):
@@ -69,20 +100,28 @@ class SimpleIndex:
     
     def find_previous(self, term, position):
         """Find most recent occurrence of term before given position"""
+        if position == float('inf'):
+            return self.find_last(term)
+        
+        elif position == -float('inf'):
+            return -float('inf')
         
         term = term.lower()
         if term not in self.index:
-            error_msg = 'term {} not found in document'.format(term)
-            raise IndexError(error_msg)
+            return -float('inf')
         
-        positions = self.index[position]
+        positions = self.index[term]
         ##sorted list --> use binary search
         previous_position_index = bisect.bisect_left(positions, position)
         
-        ##catch the case of no previous occurrence
-        ##return -float('inf') to indicate this
+        ##When the index returned is 0
+        ##this may indicate no previous occurrence or it may not
+        ##Additional condition checks required
         if previous_position_index == 0:
-            return -float('inf')
+            if positions[previous_position_index] >= position:
+                return -float('inf')
+            else:
+                return positions[previous_position_index]
         
         return positions[previous_position_index-1]
         
@@ -95,11 +134,45 @@ class SimpleIndex:
 
         return len(self.index[term])
        
-    def find_phrase(self, phrase_terms, position):
-        """TODO: this method will find first occurrence of
-           phrase starting after given position"""
-        pass
+    def find_phrase(self, phrase, start_position):
+        """Find 1st occurrence of phrase starting after given position
         
-           
-   
-    
+           args: 
+                 phrase: Pass phrase as string, preferably without uppercase
+                 letters or end-punctuation as these will be lowered
+                 and removed, respectively.
+                  
+                 start_position: start position
+                 
+           returns:
+                Interval of positions as a tuple
+                An interval (float('inf'), float('inf'))
+                indicates the phrase was not found"""
+        current_position = start_position
+        phrase_terms = [term.lower() for term in phrase.strip('\t\n .,!?').split()]
+        while True:
+            ##left to right scan
+            for i in range(len(phrase_terms)):
+                term = phrase_terms[i]
+                current_position = self.find_next(term, current_position)
+
+                if current_position == float('inf'):
+                    return (float('inf'), float('inf'))
+
+            previous_position = current_position
+            ##right to left scan
+            for i in range(len(phrase_terms)-2, -1, -1):
+                term = phrase_terms[i]
+
+                previous_position = self.find_previous(term, 
+                                                       previous_position)
+
+            ##Check if the terms occurred sequentially    
+            if current_position-previous_position == len(phrase_terms)-1:
+                return (previous_position, current_position)
+            ##If the terms didn't occur in sequence,
+            ##restart the search where the last term
+            ##of the phrase occurs
+            current_position = previous_position
+
+
