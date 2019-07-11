@@ -87,8 +87,7 @@ class SimpleIndex:
             return float('inf')
        
         positions = self.index[term]
-        ##the list of positions is sorted, so we can
-        ##use a binary search
+        ##sorted list --> use binary search
         next_position_index = bisect.bisect_right(positions, position)
        
         ##Handle the case of no next occurrence
