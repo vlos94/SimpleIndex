@@ -8,7 +8,7 @@ class SimpleIndexTests(unittest.TestCase):
     
     def setUp(self):
         test_string_1 = "here is a test string\nNow another line is here"
-        test_string_2 = "A test string needs repeats\nSo here is another"
+        test_string_2 = "A test string needs repeats\nSo here is another string"
         full_test_string = " ".join((test_string_1, test_string_2))
         
         with StringIO(full_test_string) as test_document:
@@ -21,16 +21,23 @@ class SimpleIndexTests(unittest.TestCase):
     
     def test_find_last(self):
         self.assertEqual(self.index.find_last('here'), 16)
-        self.assertEqual(self.index.find_last('string'), 12)
+        self.assertEqual(self.index.find_last('string'), 19)
         self.assertEqual(self.index.find_last('not'), float('inf'))
     
     def test_find_next(self):
-        ##TODO
-        pass
+        self.assertEqual(self.index.find_next('here', -float('inf')), 0)
+        self.assertEqual(self.index.find_next('here', 0), 9)
+        self.assertEqual(self.index.find_next('here', 9), 16)
+        self.assertEqual(self.index.find_next('string', 4), 12)
+        self.assertEqual(self.index.find_next('string', 12), 19)
     
     def test_find_previous(self):
         ##TODO
-        pass
+        self.assertEqual(self.index.find_previous('here', 9), 0)
+        self.assertEqual(self.index.find_previous('here', 16), 9)
+        self.assertEqual(self.index.find_previous('string', 12), 4)
+        self.assertEqual(self.index.find_previous('string', 19), 12)
+        self.assertEqual(self.index.find_previous('string', float('inf')), 19)
         
     def test_find_phrase(self):
         self.assertEqual(self.index.find_phrase('is a', -float('inf')), (1, 2))
