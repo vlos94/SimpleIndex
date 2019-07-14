@@ -33,8 +33,11 @@ class SimpleIndexTests(unittest.TestCase):
         self.assertEqual(self.index.find_next('string', float('inf')), float('inf'))
     
     def test_find_previous(self):
+<<<<<<< HEAD
         ##TODO
         self.assertEqual(self.index.find_previous('is', 12), 8)
+=======
+>>>>>>> 0bc512369898599c90f7fdd1ddfbbeb83e9ba808
         self.assertEqual(self.index.find_previous('here', 9), 0)
         self.assertEqual(self.index.find_previous('here', 16), 9)
         self.assertEqual(self.index.find_previous('string', 12), 4)
