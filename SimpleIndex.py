@@ -112,7 +112,6 @@ class SimpleIndex:
 
         cached_index = bisect.bisect_right(positions, current,
                                            lo=low, hi=high)
-                                          
         
         self._next_cache[term] = cached_index
 
