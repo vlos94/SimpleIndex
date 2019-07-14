@@ -35,7 +35,9 @@ class SimpleIndex:
         self.index = defaultdict(list)
         self.document_length = 0
         self._process(document)
-
+        self._prev_cache = dict()
+        self._next_cache = defaultdict(lambda: 0)
+    
     def _process(self, document):
         """Build the index from the given document."""
         current_position = 0
@@ -72,58 +74,105 @@ class SimpleIndex:
         return self.index[term][-1]
 
 
-    def find_next(self, term, position):
-        """Find the next occurrence of the term after the given position"""
-        
-        if position == -float('inf'):
-            return self.find_first(term)
-        
-        elif position == float('inf'):
-            return float('inf')
-        
-        
+    def find_next(self, term, current):
+        """Find the next occurrence of the term after the given position current
+           using a galloping search"""
         term = term.lower()
+        
         if term not in self.index:
             return float('inf')
-       
+        
         positions = self.index[term]
         
-        ##sorted list --> use binary search
-        next_position_index = bisect.bisect_right(positions, position)
-       
-        ##Handle the case of no next occurrence
-        if next_position_index == len(positions):
+        ##No next occurrence
+        if positions[-1] <= current:
             return float('inf')
-       
-        return positions[next_position_index]
-       
+        
+        if positions[0] > current:
+            self._next_cache[term] = 0
+            return positions[0]
+        
+        cached_index = self._next_cache[term]
+        ##check if the cached index works as a place to start search
+        if cached_index > 0 and positions[cached_index-1] <= current:
+            low = cached_index
+        else:
+            low = 0
+            
+        jump = 1
+        high = low + jump
+        
+        ##find a range to perform binary search on
+        while high+1 < len(positions) and positions[high] <= current:
+            jump *= 2
+            low, high = high, low+jump
+            
+        if high > len(positions)-1:
+            high = len(positions) - 1
+
+        cached_index = bisect.bisect_right(positions, current,
+                                           lo=low, hi=high)
+                                          
+        
+        self._next_cache[term] = cached_index
+
+        return positions[cached_index]
     
-    def find_previous(self, term, position):
-        """Find most recent occurrence of term before given position"""
-        if position == float('inf'):
-            return self.find_last(term)
-        
-        elif position == -float('inf'):
-            return -float('inf')
-        
+    
+    def find_previous(self, term, current):
+        """Find most recent occurrence of term before given position
+           using a galloping search"""
         term = term.lower()
         if term not in self.index:
             return -float('inf')
         
         positions = self.index[term]
-        ##sorted list --> use binary search
-        previous_position_index = bisect.bisect_left(positions, position)
         
-        ##When the index returned is 0
-        ##this may indicate no previous occurrence or it may not
-        ##Additional condition checks required
-        if previous_position_index == 0:
-            if positions[previous_position_index] >= position:
-                return -float('inf')
-            else:
-                return positions[previous_position_index]
+        ##no previous occurrremce
+        if positions[0] >= current:
+            return -float('inf')
         
-        return positions[previous_position_index-1]
+        ##asking for previous with start position greater than
+        ##last occurrence, so just return last position in list
+        if positions[-1] < current:
+            self._prev_cache[term] = len(positions)-1
+            return positions[-1]
+        
+        ##unlike the find_next method, the default index value
+        ##depends on list, so set it manually if its never been set
+        try:
+            cached_index = self._prev_cache[term]
+        except KeyError:
+            self._prev_cache[term] = len(positions)-1
+            cached_index = len(positions)-1
+            
+        if (
+            cached_index+1 < len(positions) and
+            positions[cached_index+1] >= current
+            ):
+            high = cached_index+1
+        else:
+            high = len(positions)-1
+            
+        jump = 1
+        low = high - jump
+        
+        while low >= 0 and positions[low] >= current:
+            jump *= 2
+            low, high = high-jump, low
+            
+        if low < 0:
+            low = 0
+            
+        cached_index = -1 + bisect.bisect_left(positions, current, 
+                                          lo=low, hi=high)
+        
+        self._prev_cache[term] = cached_index
+        
+        return positions[cached_index]
+        
+            
+        
         
         
     def count_occurrences(self, term):

@@ -23,16 +23,18 @@ class SimpleIndexTests(unittest.TestCase):
         self.assertEqual(self.index.find_last('here'), 16)
         self.assertEqual(self.index.find_last('string'), 19)
         self.assertEqual(self.index.find_last('not'), float('inf'))
-    
+
     def test_find_next(self):
         self.assertEqual(self.index.find_next('here', -float('inf')), 0)
         self.assertEqual(self.index.find_next('here', 0), 9)
         self.assertEqual(self.index.find_next('here', 9), 16)
         self.assertEqual(self.index.find_next('string', 4), 12)
         self.assertEqual(self.index.find_next('string', 12), 19)
+        self.assertEqual(self.index.find_next('string', float('inf')), float('inf'))
     
     def test_find_previous(self):
         ##TODO
+        self.assertEqual(self.index.find_previous('is', 12), 8)
         self.assertEqual(self.index.find_previous('here', 9), 0)
         self.assertEqual(self.index.find_previous('here', 16), 9)
         self.assertEqual(self.index.find_previous('string', 12), 4)
