@@ -45,7 +45,8 @@ class SimpleIndexTests(unittest.TestCase):
         self.assertEqual(self.index.find_phrase('here where', -float('inf')),
                          (float('inf'), float('inf')))
         self.assertEqual(self.index.find_phrase('so here', 5), (15, 16))
-
+        self.assertEqual(self.index.find_phrase('here is another', 2),
+                         (16, 18))
 
 if __name__ == '__main__':
     unittest.main()                         
